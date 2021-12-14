@@ -1,14 +1,35 @@
-from litebird_sim import ScanningStrategy, calculate_sun_earth_angles_rad
-from numpy import np
+# -*- encoding: utf-8 -*-
 
-EQUATOR_ECLIPTIC_ANGLE_RAD = 0.408407045 #23.4 deg in radians
+import numpy as np
+import astropy
+from typing import Union, List
+from numba import njit
+from litebird_sim import (
+    ScanningStrategy,
+    calculate_sun_earth_angles_rad,
+    Spin2EclipticQuaternions,
+)
+
+from litebird_sim.quaternions import (
+    quat_rotation_x,
+    quat_rotation_y,
+    quat_rotation_z,
+    quat_left_multiply,
+    rotate_x_vector,
+    rotate_z_vector,
+)
+
+
+EQUATOR_ECLIPTIC_ANGLE_RAD = 0.408407045  # 23.4 deg in radians
+
 
 @njit
-def spin_to_ecliptic(
+def SWIPE_spin_to_ecliptic(
     result,
+    sun_earth_angle_rad,
     site_colatitude_rad,
     site_longitude_rad,
-    longitude_speed_rad_per_sec,    
+    longitude_speed_rad_per_sec,
     spin_rate_hz,
     time_s,
 ):
@@ -16,23 +37,28 @@ def spin_to_ecliptic(
     result[:] = quat_rotation_z(2 * np.pi * spin_rate_hz * time_s)
     quat_left_multiply(result, *quat_rotation_y(site_colatitude_rad))
     quat_left_multiply(
-        result, *quat_rotation_x(longitude_speed_rad_per_sec * time_s + site_longitude_rad)
+        result,
+        *quat_rotation_z((longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600) * time_s + site_longitude_rad)
     )
-    quat_left_multiply(result, *quat_rotation_z(EQUATOR_ECLIPTIC_ANGLE_RAD))
+    quat_left_multiply(result, *quat_rotation_x(-EQUATOR_ECLIPTIC_ANGLE_RAD))
+    quat_left_multiply(result, *quat_rotation_z(sun_earth_angle_rad))
+
 
 @njit
-def all_spin_to_ecliptic(
+def SWIPE_all_spin_to_ecliptic(
     result_matrix,
+    sun_earth_angles_rad,
     site_colatitude_rad,
     site_longitude_rad,
-    longitude_speed_rad_per_sec,    
+    longitude_speed_rad_per_sec,
     spin_rate_hz,
     time_vector_s,
 ):
 
     for row in range(result_matrix.shape[0]):
-        spin_to_ecliptic(
+        SWIPE_spin_to_ecliptic(
             result=result_matrix[row, :],
+            sun_earth_angle_rad=sun_earth_angles_rad[row],
             site_colatitude_rad=site_colatitude_rad,
             site_longitude_rad=site_longitude_rad,
             longitude_speed_rad_per_sec=longitude_speed_rad_per_sec,
@@ -46,52 +72,56 @@ class SwipeScanningStrategy(ScanningStrategy):
     for SWIPE
 
     """
+
     def __init__(
         self,
-        spin_sun_angle_rad,
-        spin_rate_hz,
+        site_latitude_deg=78.2232,
+        site_longitude_deg=15.6267,
+        longitude_speed_deg_per_sec=0,
+        spin_rate_hz=1.0 / 60.0,
         start_time=astropy.time.Time("2023-01-01", scale="tdb"),
     ):
 
-        self.spin_sun_angle_rad = spin_sun_angle_rad
-        self.precession_rate_hz = precession_rate_hz
+        self.site_colatitude_rad = np.deg2rad(90.0 - site_latitude_deg)
+        self.site_longitude_rad = np.deg2rad(site_longitude_deg)
+        self.longitude_speed_rad_per_sec = np.deg2rad(longitude_speed_deg_per_sec)
         self.spin_rate_hz = spin_rate_hz
         self.start_time = start_time
 
     def __repr__(self):
         return (
-            "SwipeScanningStrategy(spin_sun_angle_rad={spin_sun_angle_rad}, "
-            "precession_rate_hz={precession_rate_hz}, "
+            "SwipeScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
+            "site_longitude_rad={site_longitude_rad},"
+            "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
             "spin_rate_hz={spin_rate_hz}, "
             "start_time={start_time})".format(
-                spin_sun_angle_rad=self.spin_sun_angle_rad,
-                precession_rate_hz=self.precession_rate_hz,
+                site_colatitude_rad=self.site_colatitude_rad,
+                site_longitude_rad=self.site_longitude_rad,
+                longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
                 spin_rate_hz=self.spin_rate_hz,
                 start_time=self.start_time,
             )
         )
 
-    def __str__(self):
-        return """SWIPE scanning strategy:
-    angle between the Sun and the spin axis:       {spin_sun_angle_deg:.1f}°
-    rotations around the precession angle:         {precession_rate_hr} rot/hr
-    rotations around the spinning axis:            {spin_rate_hr} rot/hr
-    start time of the simulation:                  {start_time}""".format(
-            spin_sun_angle_deg=np.rad2deg(self.spin_sun_angle_rad),
-            precession_rate_hr=3600.0 * self.precession_rate_hz,
-            spin_rate_hr=3600.0 * self.spin_rate_hz,
-            start_time=self.start_time,
-        )
-
-    def all_spin_to_ecliptic(self, result_matrix, sun_earth_angles_rad, time_vector_s):
+    def all_spin_to_ecliptic(
+        self,
+        result_matrix,
+        sun_earth_angles_rad,
+        site_colatitude_rad,
+        site_longitude_rad,
+        longitude_speed_rad_per_sec,
+        spin_rate_hz,
+        time_vector_s,
+    ):
         assert result_matrix.shape == (len(time_vector_s), 4)
         assert len(sun_earth_angles_rad) == len(time_vector_s)
 
         SWIPE_all_spin_to_ecliptic(
             result_matrix=result_matrix,
             sun_earth_angles_rad=sun_earth_angles_rad,
-            spin_sun_angle_rad=self.spin_sun_angle_rad,
-            precession_rate_hz=self.precession_rate_hz,
+            site_colatitude_rad=self.site_colatitude_rad,
+            site_longitude_rad=self.site_longitude_rad,
+            longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
             spin_rate_hz=self.spin_rate_hz,
             time_vector_s=time_vector_s,
         )
@@ -119,6 +149,10 @@ class SwipeScanningStrategy(ScanningStrategy):
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,
             sun_earth_angles_rad=sun_earth_angles_rad,
+            site_colatitude_rad=self.site_colatitude_rad,
+            site_longitude_rad=self.site_longitude_rad,
+            longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
+            spin_rate_hz=self.spin_rate_hz,            
             time_vector_s=time_s,
         )
 
@@ -127,7 +161,3 @@ class SwipeScanningStrategy(ScanningStrategy):
             pointing_freq_hz=pointing_freq_hz,
             quats=spin2ecliptic_quats,
         )
-
-
-
-
