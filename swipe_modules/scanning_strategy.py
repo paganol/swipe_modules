@@ -132,6 +132,7 @@ class SwipeScanningStrategy(ScanningStrategy):
         time_span_s: float,
         delta_time_s: float,
     ) -> Spin2EclipticQuaternions:
+
         pointing_freq_hz = 1.0 / delta_time_s
         num_of_quaternions = ScanningStrategy.optimal_num_of_quaternions(
             time_span_s=time_span_s, delta_time_s=delta_time_s
