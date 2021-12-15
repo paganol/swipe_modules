@@ -2,7 +2,7 @@ from setuptools import find_packages, setup
 
 setup(
     name="swipe_modules",
-    version="0.0",
+    version="0.1.0",
     description="Routines that adapt litebird_sim to LSPE-SWIPE",
     author="Luca Pagano",
     author_email="luca.pagano@unife.it",
