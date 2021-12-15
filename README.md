@@ -80,7 +80,8 @@ hp.mollview(h)
 
 ## Parameters
 
-The relevant class for the scanning strategy is ``SwipeScanningStrategy``. It takes the following paramters:
+The relevant class for the scanning strategy is ``SwipeScanningStrategy``.
+It takes the following parameters:
 
     - ``site_latitude_deg``: Latitude of the launching site
 

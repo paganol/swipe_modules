@@ -78,14 +78,14 @@ class SwipeScanningStrategy(ScanningStrategy):
         site_latitude_deg=78.2232,
         site_longitude_deg=15.6267,
         longitude_speed_deg_per_sec=0,
-        spin_rate_hz=1.0 / 60.0,
+        spin_rate_rmp=1.0,
         start_time=astropy.time.Time("2023-01-01", scale="tdb"),
     ):
 
         self.site_colatitude_rad = np.deg2rad(90.0 - site_latitude_deg)
         self.site_longitude_rad = np.deg2rad(site_longitude_deg)
         self.longitude_speed_rad_per_sec = np.deg2rad(longitude_speed_deg_per_sec)
-        self.spin_rate_hz = spin_rate_hz
+        self.spin_rate_hz = spin_rate_rmp / 60.0
         self.start_time = start_time
 
     def __repr__(self):
