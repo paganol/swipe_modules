@@ -60,7 +60,7 @@ jplephem = "^2.14"
 PyGithub = "^1.53"
 requests = "^2.24.0"
 rich = "^6.2.0"
-litebird_sim = "^0.3.0"
+litebird_sim = "^0.4.0"
 
 # For some reason, these don't get installed if in extras.docs
 # -> added to the global dependencies
