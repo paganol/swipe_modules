@@ -26,7 +26,7 @@ git clone https://github.com/paganol/swipe_modules.git
 cd swipe_modules
 pip install .
 ```
-
+It can be installed in editable mode with ``pip install -e .``
 
 ## Usage
 
