@@ -76,3 +76,18 @@ for idet in [0]:
 hp.mollview(h)
 ```
 <img src="https://user-images.githubusercontent.com/5398538/146160724-a04d6117-e39b-4690-a247-9a7bfdeb6ba5.png" width="500">
+
+
+## Parameters
+
+The relevant class for the scanning strategy is ``SwipeScanningStrategy``. It takes the following paramters:
+
+    - ``site_latitude_deg``: Latitude of the launching site
+
+    - ``site_longitude_deg``: Longitude of the launching site
+
+    - ``longitude_speed_deg_per_sec``: Longitude speed of balloon 
+
+    - ``spin_rate_rmp``: Number of rotations around the spin axis per minute
+
+    - ``start_time``: Launching time 
