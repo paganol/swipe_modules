@@ -28,6 +28,15 @@ pip install .
 ```
 It can be installed in editable mode with ``pip install -e .``
 
+
+## Install IMO
+
+Download the ``IMO`` from the github [repository](https://github.com/paganol/swipe_imo/) and run
+```
+python -m litebird_sim.install_imo
+```
+Select option ``3`` and enter the directory ``swipe_imo/IMO`` insert a descriptive name, something like SWIPE_IMO, and save with ``s``
+
 ## Usage
 
 ```python
