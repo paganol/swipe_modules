@@ -36,10 +36,7 @@ def SWIPE_spin_to_ecliptic(
 
     result[:] = quat_rotation_z(2 * np.pi * spin_rate_hz * time_s)
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
-    quat_left_multiply(
-        result,
-        *quat_rotation_z(longitude_rad)
-    )
+    quat_left_multiply(result, *quat_rotation_z(longitude_rad))
     quat_left_multiply(result, *quat_rotation_x(-EQUATOR_ECLIPTIC_ANGLE_RAD))
     quat_left_multiply(result, *quat_rotation_z(sun_earth_angle_rad))
 
@@ -66,7 +63,7 @@ def SWIPE_all_spin_to_ecliptic(
 
 
 class SwipeScanningStrategy(ScanningStrategy):
-    """A class containing the parameters of the sky scanning strategy 
+    """A class containing the parameters of the sky scanning strategy
     for SWIPE
 
     """
@@ -90,23 +87,27 @@ class SwipeScanningStrategy(ScanningStrategy):
         self.spin_rate_hz = spin_rate_rmp / 60.0
         self.start_time = start_time
 
-        if balloon_latitude_deg:
-            self.balloon_colatitude_rad = np.deg2rad(90.0 - balloon_latitude_deg)
-        else:
+        if balloon_latitude_deg is None:
             self.balloon_colatitude_rad = None
-
-        if balloon_longitude_deg:
-            self.balloon_longitude_rad = np.deg2rad(balloon_longitude_deg)
         else:
-            self.balloon_longitude_rad = None
+            self.balloon_colatitude_rad = np.deg2rad(90.0 - balloon_latitude_deg)
 
-        if balloon_latitude_deg and balloon_longitude_deg:
-            print('WARNING!!')
-            print('site_latitude_deg, site_longitude_deg and longitude_speed_deg_per_sec ignored')
-            print('Tabulated trajectory will be used')
+        if balloon_longitude_deg is None:
+            self.balloon_longitude_rad = None
+        else:
+            self.balloon_longitude_rad = np.deg2rad(balloon_longitude_deg)
+
+        if (balloon_latitude_deg is None) and (balloon_longitude_deg is None):
+            print(
+                "site_latitude_deg, site_longitude_deg and longitude_speed_deg_per_sec used"
+            )
+        else:
+            print(
+                "site_latitude_deg, site_longitude_deg and longitude_speed_deg_per_sec ignored"
+            )
+            print("a tabulated trajectory will be used")
 
         self.balloon_time = balloon_time
-
 
     def __repr__(self):
         return (
@@ -165,40 +166,44 @@ class SwipeScanningStrategy(ScanningStrategy):
             num_of_quaternions=num_of_quaternions,
         )
 
-        if not self.balloon_time:
+        if self.balloon_time is None:
 
-            colatitude_rad = np.repeat(self.site_colatitude_rad,num_of_quaternions)
-            longitude_rad = (self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600) * time_s + self.site_longitude_rad
+            colatitude_rad = np.repeat(self.site_colatitude_rad, num_of_quaternions)
+            longitude_rad = (
+                self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600
+            ) * time_s + self.site_longitude_rad
 
         else:
-            assert(type(start_time) == astropy.time.Time)
+            assert type(start_time) == astropy.time.Time
 
-            assert(self.balloon_time[0]<=start_time)
+            assert self.balloon_time[0] <= start_time
 
-            end_time = start_time + time_span_s/24/3600 
+            end_time = start_time + time_span_s / 24 / 3600
 
-            assert(self.balloon_time[-1]>=end_time)
+            assert self.balloon_time[-1] >= end_time
 
             time_jd = [d.jd for d in time]
-            balloon_time_jd = [d.jd for d in balloon_time]
+            balloon_time_jd = [d.jd for d in self.balloon_time]
 
-            #interpolate
-            fcolat = interpolate.interp1d(balloon_time_jd,self.balloon_colatitude_rad,kind='cubic')
-            colatitude_rad = fcolat(time_jd)            
+            # interpolate
+            fcolat = interpolate.interp1d(
+                balloon_time_jd, self.balloon_colatitude_rad, kind="cubic"
+            )
+            colatitude_rad = fcolat(time_jd)
 
-            flon = interpolate.interp1d(balloon_time_jd,np.unwrap(self.balloon_longitude_rad),kind='cubic')
-            longitude_rad = np.mod(flon(time_jd),2*np.pi)
-
+            flon = interpolate.interp1d(
+                balloon_time_jd, np.unwrap(self.balloon_longitude_rad), kind="cubic"
+            )
+            longitude_rad = np.mod(flon(time_jd), 2 * np.pi)
 
         sun_earth_angles_rad = calculate_sun_earth_angles_rad(time)
-
 
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,
             sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
-            spin_rate_hz=self.spin_rate_hz,            
+            spin_rate_hz=self.spin_rate_hz,
             time_vector_s=time_s,
         )
 
