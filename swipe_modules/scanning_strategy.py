@@ -169,9 +169,11 @@ class SwipeScanningStrategy(ScanningStrategy):
         if self.balloon_time is None:
 
             colatitude_rad = np.repeat(self.site_colatitude_rad, num_of_quaternions)
-            longitude_rad = (
-                self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600
-            ) * time_s + self.site_longitude_rad
+            longitude_rad = np.mod(
+                (self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600) * time_s
+                + self.site_longitude_rad,
+                2 * np.pi,
+            )
 
         else:
             assert type(start_time) == astropy.time.Time
