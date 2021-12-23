@@ -19,6 +19,8 @@ from litebird_sim.quaternions import (
     rotate_x_vector,
     rotate_z_vector,
 )
+from litebird_sim.imo import Imo
+from uuid import UUID
 
 
 EQUATOR_ECLIPTIC_ANGLE_RAD = 0.408407045  # 23.4 deg in radians
@@ -66,6 +68,34 @@ class SwipeScanningStrategy(ScanningStrategy):
     """A class containing the parameters of the sky scanning strategy
     for SWIPE
 
+    The constructor accepts the following parameters:
+
+    - `site_latitude_deg`: latitude of the launching site in deg
+
+    - `site_longitude_deg`: longitude of the launching site in deg
+
+    - `longitude_speed_deg_per_sec`: longitude speed in deg/sec
+
+    - `spin_rate_rmp`: the number of rotations per minute (RPM) around
+    the spin axis
+
+    - `start_time`: an ``astropy.time.Time`` object representing the
+      start of the observation. It's currently unused, but it is meant
+      to represent the time when the rotation starts (i.e., the angle
+      ωt is zero).
+
+    - `balloon_latitude_deg`: latitude of a tabulated trajectory
+
+    - `balloon_longitude_deg`: longitude of a tabulated trajectory
+
+    - `balloon_time`: list of astropy.time.Time
+
+    These fields are available once the object has been initialized.
+
+    You can create an instance of this class using the class method
+    :meth:`.from_imo`, which reads the
+    parameters from the IMO.
+
     """
 
     def __init__(
@@ -73,7 +103,7 @@ class SwipeScanningStrategy(ScanningStrategy):
         site_latitude_deg=78.2232,
         site_longitude_deg=15.6267,
         longitude_speed_deg_per_sec=0,
-        spin_rate_rmp=2.0,
+        spin_rate_rmp=0.05,
         start_time=astropy.time.Time("2023-01-01", scale="tdb"),
         balloon_latitude_deg: Union[np.ndarray, None] = None,
         balloon_longitude_deg: Union[np.ndarray, None] = None,
@@ -145,6 +175,42 @@ class SwipeScanningStrategy(ScanningStrategy):
             time_vector_s=time_vector_s,
         )
 
+    @staticmethod
+    def from_imo(imo: Imo, url: Union[str, UUID]):
+        """Read the definition of the scanning strategy from the IMO
+
+        This function returns a :class:`.SwipeScanningStrategy`
+        object containing the set of parameters that define the
+        scanning strategy of the balloon.
+
+        Args:
+
+            imo (:class:`.Imo`): an instance of the :class:`.Imo` class
+
+            url (str or ``UUID``): a reference to the data file
+                containing the definition of the scanning strategy. It can
+                be either a string like
+                ``/releases/v0.0/balloon/scanning_parameters/`` or a
+                UUID.
+
+        Example::
+
+            imo = Imo()
+            sstr = SwipeScanningStrategy.from_imo(
+                imo=imo,
+                url="/releases/v0.0/balloon/scanning_parameters/",
+            )
+            print(sstr)
+
+        """
+        obj = imo.query(url)
+        return SwipeScanningStrategy(
+            site_latitude_deg=obj.metadata["site_latitude_deg"],
+            site_longitude_deg=obj.metadata["site_longitude_deg"],
+            longitude_speed_deg_per_sec=obj.metadata["longitude_speed_deg_per_sec"],
+            spin_rate_rmp=obj.metadata["spin_rate_rpm"],
+        )
+
     def generate_spin2ecl_quaternions(
         self,
         start_time: Union[float, astropy.time.Time],
@@ -176,6 +242,12 @@ class SwipeScanningStrategy(ScanningStrategy):
             )
 
         else:
+            assert (
+                len(self.balloon_colatitude_rad)
+                == len(self.balloon_longitude_rad)
+                == len(self.balloon_time)
+            )
+
             assert type(start_time) == astropy.time.Time
 
             assert self.balloon_time[0] <= start_time
