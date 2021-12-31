@@ -11,7 +11,7 @@ setup(
     python_requires=">=3.7.1,<3.10",
     install_requires=[
         "numpy>=1.18",
-        "numba==0.54",
+        "numba>=0.54",
         "astropy>=4.0",
         "litebird_sim",
         "setuptools",
