@@ -153,6 +153,15 @@ class SwipeScanningStrategy(ScanningStrategy):
                 spin_rate_hz=self.spin_rate_hz,
                 start_time=self.start_time,
             )
+        ) if ((self.balloon_colatitude_rad is None) and (self.balloon_longitude_rad is None)) else (
+            "SwipeScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
+            "spin_rate_hz={spin_rate_hz}, "
+            "start_time={start_time})".format(
+                min_colatitude_rad=self.balloon_colatitude_rad.min(),
+                max_colatitude_rad=self.balloon_colatitude_rad.max(),
+                spin_rate_hz=self.spin_rate_hz,
+                start_time=self.start_time,
+            )
         )
 
     def all_spin_to_ecliptic(
