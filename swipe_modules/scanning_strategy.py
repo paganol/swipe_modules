@@ -23,9 +23,10 @@ from litebird_sim.imo import Imo
 from uuid import UUID
 import pkg_resources
 
-data_directory = pkg_resources.resource_filename('swipe_modules','data')
+data_directory = pkg_resources.resource_filename("swipe_modules", "data")
 
 EQUATOR_ECLIPTIC_ANGLE_RAD = 0.408407045  # 23.4 deg in radians
+
 
 @njit
 def SWIPE_spin_to_ecliptic(
@@ -142,25 +143,32 @@ class SwipeScanningStrategy(ScanningStrategy):
 
     def __repr__(self):
         return (
-            "SwipeScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
-            "site_longitude_rad={site_longitude_rad},"
-            "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
-            "spin_rate_hz={spin_rate_hz}, "
-            "start_time={start_time})".format(
-                site_colatitude_rad=self.site_colatitude_rad,
-                site_longitude_rad=self.site_longitude_rad,
-                longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
-                spin_rate_hz=self.spin_rate_hz,
-                start_time=self.start_time,
+            (
+                "SwipeScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
+                "site_longitude_rad={site_longitude_rad},"
+                "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
+                "spin_rate_hz={spin_rate_hz}, "
+                "start_time={start_time})".format(
+                    site_colatitude_rad=self.site_colatitude_rad,
+                    site_longitude_rad=self.site_longitude_rad,
+                    longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
+                    spin_rate_hz=self.spin_rate_hz,
+                    start_time=self.start_time,
+                )
             )
-        ) if ((self.balloon_colatitude_rad is None) and (self.balloon_longitude_rad is None)) else (
-            "SwipeScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
-            "spin_rate_hz={spin_rate_hz}, "
-            "start_time={start_time})".format(
-                min_colatitude_rad=self.balloon_colatitude_rad.min(),
-                max_colatitude_rad=self.balloon_colatitude_rad.max(),
-                spin_rate_hz=self.spin_rate_hz,
-                start_time=self.start_time,
+            if (
+                (self.balloon_colatitude_rad is None)
+                and (self.balloon_longitude_rad is None)
+            )
+            else (
+                "SwipeScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
+                "spin_rate_hz={spin_rate_hz}, "
+                "start_time={start_time})".format(
+                    min_colatitude_rad=self.balloon_colatitude_rad.min(),
+                    max_colatitude_rad=self.balloon_colatitude_rad.max(),
+                    spin_rate_hz=self.spin_rate_hz,
+                    start_time=self.start_time,
+                )
             )
         )
 

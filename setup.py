@@ -17,5 +17,5 @@ setup(
         "setuptools",
         "mpi4py",
     ],
-    include_package_data=True
+    include_package_data=True,
 )
