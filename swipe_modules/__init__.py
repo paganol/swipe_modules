@@ -2,6 +2,7 @@
 
 from .scanning_strategy import (
     SwipeScanningStrategy,
+    data_directory,
 )
 
 __all__ = [
@@ -9,4 +10,5 @@ __all__ = [
     "__version__",
     # scanning.py
     "SwipeScanningStrategy",
+    "data_directory",
 ]

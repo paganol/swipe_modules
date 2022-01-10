@@ -92,12 +92,25 @@ hp.mollview(h)
 The relevant class for the scanning strategy is ``SwipeScanningStrategy``.
 It takes the following parameters:
 
-    - ``site_latitude_deg``: Latitude of the launching site
+    - `site_latitude_deg`: latitude of the launching site in deg
 
-    - ``site_longitude_deg``: Longitude of the launching site
+    - `site_longitude_deg`: longitude of the launching site in deg
 
-    - ``longitude_speed_deg_per_sec``: Longitude speed of balloon 
+    - `longitude_speed_deg_per_sec`: longitude speed in deg/sec
 
-    - ``spin_rate_rmp``: Number of rotations around the spin axis per minute
+    - `spin_rate_rmp`: the number of rotations per minute (RPM) around
+    the spin axis
 
-    - ``start_time``: Launching time 
+    - `start_time`: an ``astropy.time.Time`` object representing the
+      start of the observation. It's currently unused, but it is meant
+      to represent the time when the rotation starts (i.e., the angle
+      ωt is zero).
+
+    - `balloon_latitude_deg`: latitude of a tabulated trajectory
+
+    - `balloon_longitude_deg`: longitude of a tabulated trajectory
+
+    - `balloon_time`: list of astropy.time.Time
+
+If ``balloon_latitude_deg``, ``balloon_longitude_deg`` and ``balloon_time`` are provided
+a tabulated trajectory will be used.
