@@ -304,3 +304,5 @@ class SwipeScanningStrategy(ScanningStrategy):
             pointing_freq_hz=pointing_freq_hz,
             quats=spin2ecliptic_quats,
         )
+
+
