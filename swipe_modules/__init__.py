@@ -1,14 +1,13 @@
 # -*- encoding: utf-8 -*-
 
-from .scanning_strategy import (
-    SwipeScanningStrategy,
-    data_directory,
-)
+from .spin_scanning_strategy import SwipeSpinScanningStrategy
+from .raster_scanning_strategy import SwipeRasterScanningStrategy
+from .common import data_directory
 
 __all__ = [
     "__author__",
     "__version__",
-    # scanning.py
-    "SwipeScanningStrategy",
+    "SwipeSpinScanningStrategy",
+    "SwipeRasterScanningStrategy",
     "data_directory",
 ]

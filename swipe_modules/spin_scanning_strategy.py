@@ -8,7 +8,7 @@ from numba import njit
 from litebird_sim import (
     ScanningStrategy,
     calculate_sun_earth_angles_rad,
-    Spin2EclipticQuaternions,
+    RotQuaternion,
 )
 
 from litebird_sim.quaternions import (
@@ -21,15 +21,12 @@ from litebird_sim.quaternions import (
 )
 from litebird_sim.imo import Imo
 from uuid import UUID
-import pkg_resources
 
-data_directory = pkg_resources.resource_filename("swipe_modules", "data")
-
-EQUATOR_ECLIPTIC_ANGLE_RAD = 0.408407045  # 23.4 deg in radians
+from .common import EQUATOR_ECLIPTIC_ANGLE_RAD
 
 
 @njit
-def SWIPE_spin_to_ecliptic(
+def SWIPE_spin_spin_to_ecliptic(
     result,
     sun_earth_angle_rad,
     colatitude_rad,
@@ -46,7 +43,7 @@ def SWIPE_spin_to_ecliptic(
 
 
 @njit
-def SWIPE_all_spin_to_ecliptic(
+def SWIPE_spin_all_spin_to_ecliptic(
     result_matrix,
     sun_earth_angles_rad,
     colatitude_rad,
@@ -56,7 +53,7 @@ def SWIPE_all_spin_to_ecliptic(
 ):
 
     for row in range(result_matrix.shape[0]):
-        SWIPE_spin_to_ecliptic(
+        SWIPE_spin_spin_to_ecliptic(
             result=result_matrix[row, :],
             sun_earth_angle_rad=sun_earth_angles_rad[row],
             colatitude_rad=colatitude_rad[row],
@@ -66,7 +63,7 @@ def SWIPE_all_spin_to_ecliptic(
         )
 
 
-class SwipeScanningStrategy(ScanningStrategy):
+class SwipeSpinScanningStrategy(ScanningStrategy):
     """A class containing the parameters of the sky scanning strategy
     for SWIPE
 
@@ -144,7 +141,7 @@ class SwipeScanningStrategy(ScanningStrategy):
     def __repr__(self):
         return (
             (
-                "SwipeScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
+                "SwipeSpinScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
                 "site_longitude_rad={site_longitude_rad},"
                 "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
                 "spin_rate_hz={spin_rate_hz}, "
@@ -161,7 +158,7 @@ class SwipeScanningStrategy(ScanningStrategy):
                 and (self.balloon_longitude_rad is None)
             )
             else (
-                "SwipeScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
+                "SwipeSpinScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
                 "spin_rate_hz={spin_rate_hz}, "
                 "start_time={start_time})".format(
                     min_colatitude_rad=self.balloon_colatitude_rad.min(),
@@ -184,7 +181,7 @@ class SwipeScanningStrategy(ScanningStrategy):
         assert result_matrix.shape == (len(time_vector_s), 4)
         assert len(sun_earth_angles_rad) == len(time_vector_s)
 
-        SWIPE_all_spin_to_ecliptic(
+        SWIPE_spin_all_spin_to_ecliptic(
             result_matrix=result_matrix,
             sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
@@ -234,7 +231,7 @@ class SwipeScanningStrategy(ScanningStrategy):
         start_time: Union[float, astropy.time.Time],
         time_span_s: float,
         delta_time_s: float,
-    ) -> Spin2EclipticQuaternions:
+    ) -> RotQuaternion:
 
         pointing_freq_hz = 1.0 / delta_time_s
 
@@ -299,10 +296,8 @@ class SwipeScanningStrategy(ScanningStrategy):
             time_vector_s=time_s,
         )
 
-        return Spin2EclipticQuaternions(
+        return RotQuaternion(
             start_time=start_time,
-            pointing_freq_hz=pointing_freq_hz,
+            sampling_rate_hz=pointing_freq_hz,
             quats=spin2ecliptic_quats,
         )
-
-
