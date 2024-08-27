@@ -7,7 +7,6 @@ from typing import Union, List
 from numba import njit
 from litebird_sim import (
     ScanningStrategy,
-    calculate_sun_earth_angles_rad,
     RotQuaternion,
 )
 
@@ -22,7 +21,7 @@ from litebird_sim.quaternions import (
 from litebird_sim.imo import Imo
 from uuid import UUID
 
-from .common import EQUATOR_ECLIPTIC_ANGLE_RAD
+from .common import _ct_jd_to_lst_rad, EQUATOR_ECLIPTIC_ANGLE_RAD
 
 
 @njit
@@ -33,25 +32,29 @@ def _sawtooth(
     speed,
 ):
 
-    r = time / amplitude * speed
-    x = 4 * np.abs((r - np.floor(r + 0.5))) - 1
-    return offset + amplitude * x / 2
+    if amplitude == 0:
+        return offset
+    else:
+        r = time / amplitude * speed
+        x = 4 * np.abs((r - np.floor(r + 0.5))) - 1
+        return offset + amplitude * x / 2
 
 
 @njit
 def _SWIPEraster_spin_to_ecliptic(
     result,
-    sun_earth_angle_rad,
     colatitude_rad,
     longitude_rad,
     azimuth_start_rad,
     azimuth_amplitude_rad,
     azimuth_scan_speed_rad_per_s,
     time_s,
+    time_jd,
 ):
 
     result[:] = quat_rotation_z(
-        _sawtooth(
+        np.pi
+        - _sawtooth(
             time_s,
             azimuth_start_rad,
             azimuth_amplitude_rad,
@@ -59,33 +62,33 @@ def _SWIPEraster_spin_to_ecliptic(
         )
     )
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
-    quat_left_multiply(result, *quat_rotation_z(longitude_rad))
-    quat_left_multiply(result, *quat_rotation_x(-EQUATOR_ECLIPTIC_ANGLE_RAD))
-    quat_left_multiply(result, *quat_rotation_z(sun_earth_angle_rad))
+    lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
+    quat_left_multiply(result, *quat_rotation_z(lst))
+    quat_left_multiply(result, *quat_rotation_x(EQUATOR_ECLIPTIC_ANGLE_RAD))
 
 
 @njit
 def _SWIPEraster_all_spin_to_ecliptic(
     result_matrix,
-    sun_earth_angles_rad,
     colatitude_rad,
     longitude_rad,
     azimuth_start_rad,
     azimuth_amplitude_rad,
     azimuth_scan_speed_rad_per_s,
     time_vector_s,
+    time_vector_jd,
 ):
 
     for row in range(result_matrix.shape[0]):
         _SWIPEraster_spin_to_ecliptic(
             result=result_matrix[row, :],
-            sun_earth_angle_rad=sun_earth_angles_rad[row],
             colatitude_rad=colatitude_rad[row],
             longitude_rad=longitude_rad[row],
             azimuth_start_rad=azimuth_start_rad,
             azimuth_amplitude_rad=azimuth_amplitude_rad,
             azimuth_scan_speed_rad_per_s=azimuth_scan_speed_rad_per_s,
             time_s=time_vector_s[row],
+            time_jd=time_vector_jd[row],
         )
 
 
@@ -131,7 +134,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         azimuth_start_deg=180.0,
         azimuth_amplitude_deg=20.0,
         azimuth_scan_speed_deg_per_s=0.1,
-        start_time=astropy.time.Time("2023-01-01", scale="tdb"),
+        start_time: Union[astropy.time.Time, None] = None,
         balloon_latitude_deg: Union[np.ndarray, None] = None,
         balloon_longitude_deg: Union[np.ndarray, None] = None,
         balloon_time: Union[List[astropy.time.Time], None] = None,
@@ -141,9 +144,9 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         self.site_longitude_rad = np.deg2rad(site_longitude_deg)
         self.longitude_speed_rad_per_sec = np.deg2rad(longitude_speed_deg_per_sec)
 
-        self.azimuth_start_rad = azimuth_start_deg / 180.0 * np.pi
-        self.azimuth_amplitude_rad = azimuth_amplitude_deg / 180.0 * np.pi
-        self.azimuth_scan_speed_rad_per_s = azimuth_scan_speed_deg_per_s / 180.0 * np.pi
+        self.azimuth_start_rad = np.deg2rad(azimuth_start_deg)
+        self.azimuth_amplitude_rad = np.deg2rad(azimuth_amplitude_deg)
+        self.azimuth_scan_speed_rad_per_s = np.deg2rad(azimuth_scan_speed_deg_per_s)
 
         self.start_time = start_time
 
@@ -172,7 +175,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
     def __repr__(self):
         return (
             (
-                "SwipeSpinScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
+                "SwipeRasterScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
                 "site_longitude_rad={site_longitude_rad},"
                 "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
                 "azimuth_start_rad={azimuth_start_rad}, "
@@ -193,7 +196,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
                 and (self.balloon_longitude_rad is None)
             )
             else (
-                "SwipeSpinScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
+                "SwipeRasterScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
                 "azimuth_start_rad={azimuth_start_rad}, "
                 "azimuth_amplitude_rad={azimuth_amplitude_rad}, "
                 "azimuth_scan_speed_rad_per_s={azimuth_scan_speed_rad_per_s}, "
@@ -211,33 +214,33 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
     def all_spin_to_ecliptic(
         self,
         result_matrix,
-        sun_earth_angles_rad,
         colatitude_rad,
         longitude_rad,
         azimuth_start_rad,
         azimuth_amplitude_rad,
         azimuth_scan_speed_rad_per_s,
         time_vector_s,
+        time_vector_jd,
     ):
         assert result_matrix.shape == (len(time_vector_s), 4)
-        assert len(sun_earth_angles_rad) == len(time_vector_s)
+        assert len(time_vector_jd) == len(time_vector_s)
 
         _SWIPEraster_all_spin_to_ecliptic(
             result_matrix=result_matrix,
-            sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
             azimuth_start_rad=self.azimuth_start_rad,
             azimuth_amplitude_rad=self.azimuth_amplitude_rad,
             azimuth_scan_speed_rad_per_s=self.azimuth_scan_speed_rad_per_s,
             time_vector_s=time_vector_s,
+            time_vector_jd=time_vector_jd,
         )
 
     @staticmethod
     def from_imo(imo: Imo, url: Union[str, UUID]):
         """Read the definition of the scanning strategy from the IMO
 
-        This function returns a :class:`.SwipeScanningStrategy`
+        This function returns a :class:`.SwipeRasterScanningStrategy`
         object containing the set of parameters that define the
         scanning strategy of the balloon.
 
@@ -254,7 +257,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         Example::
 
             imo = Imo()
-            sstr = SwipeScanningStrategy.from_imo(
+            sstr = SwipeRasterScanningStrategy.from_imo(
                 imo=imo,
                 url="/releases/v0.0/balloon/scanning_parameters/",
             )
@@ -273,10 +276,12 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
     def generate_spin2ecl_quaternions(
         self,
-        start_time: Union[float, astropy.time.Time],
+        start_time: astropy.time.Time,
         time_span_s: float,
         delta_time_s: float,
     ) -> RotQuaternion:
+
+        assert type(start_time) == astropy.time.Time
 
         pointing_freq_hz = 1.0 / delta_time_s
 
@@ -296,10 +301,10 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
             colatitude_rad = np.repeat(self.site_colatitude_rad, num_of_quaternions)
             longitude_rad = np.mod(
-                (self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600) * time_s
-                + self.site_longitude_rad,
+                self.longitude_speed_rad_per_sec * time_s + self.site_longitude_rad,
                 2 * np.pi,
             )
+            time_jd = time.jd
 
         else:
             assert (
@@ -307,8 +312,6 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
                 == len(self.balloon_longitude_rad)
                 == len(self.balloon_time)
             )
-
-            assert type(start_time) == astropy.time.Time
 
             assert self.balloon_time[0] <= start_time
 
@@ -330,17 +333,16 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
             )
             longitude_rad = np.mod(flon(time_jd), 2 * np.pi)
 
-        sun_earth_angles_rad = calculate_sun_earth_angles_rad(time)
 
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,
-            sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
             azimuth_start_rad=self.azimuth_start_rad,
             azimuth_amplitude_rad=self.azimuth_amplitude_rad,
             azimuth_scan_speed_rad_per_s=self.azimuth_scan_speed_rad_per_s,
             time_vector_s=time_s,
+            time_vector_jd=time_jd,
         )
 
         return RotQuaternion(

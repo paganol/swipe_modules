@@ -22,30 +22,30 @@ from litebird_sim.quaternions import (
 from litebird_sim.imo import Imo
 from uuid import UUID
 
-from .common import EQUATOR_ECLIPTIC_ANGLE_RAD
+from .common import _ct_jd_to_lst_rad, EQUATOR_ECLIPTIC_ANGLE_RAD
 
 
 @njit
-def SWIPE_spin_spin_to_ecliptic(
+def SWIPEspin_spin_to_ecliptic(
     result,
     sun_earth_angle_rad,
     colatitude_rad,
     longitude_rad,
     spin_rate_hz,
     time_s,
+    time_jd,
 ):
 
     result[:] = quat_rotation_z(2 * np.pi * spin_rate_hz * time_s)
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
-    quat_left_multiply(result, *quat_rotation_z(longitude_rad))
-    quat_left_multiply(result, *quat_rotation_x(-EQUATOR_ECLIPTIC_ANGLE_RAD))
-    quat_left_multiply(result, *quat_rotation_z(sun_earth_angle_rad))
+    lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
+    quat_left_multiply(result, *quat_rotation_z(lst))
+    quat_left_multiply(result, *quat_rotation_x(EQUATOR_ECLIPTIC_ANGLE_RAD))
 
 
 @njit
-def SWIPE_spin_all_spin_to_ecliptic(
+def SWIPEspin_all_spin_to_ecliptic(
     result_matrix,
-    sun_earth_angles_rad,
     colatitude_rad,
     longitude_rad,
     spin_rate_hz,
@@ -53,13 +53,13 @@ def SWIPE_spin_all_spin_to_ecliptic(
 ):
 
     for row in range(result_matrix.shape[0]):
-        SWIPE_spin_spin_to_ecliptic(
+        SWIPEspin_spin_to_ecliptic(
             result=result_matrix[row, :],
-            sun_earth_angle_rad=sun_earth_angles_rad[row],
             colatitude_rad=colatitude_rad[row],
             longitude_rad=longitude_rad[row],
             spin_rate_hz=spin_rate_hz,
             time_s=time_vector_s[row],
+            time_jd=time_vector_jd[row],
         )
 
 
@@ -172,29 +172,29 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
     def all_spin_to_ecliptic(
         self,
         result_matrix,
-        sun_earth_angles_rad,
         colatitude_rad,
         longitude_rad,
         spin_rate_hz,
         time_vector_s,
+        time_vector_jd,
     ):
         assert result_matrix.shape == (len(time_vector_s), 4)
-        assert len(sun_earth_angles_rad) == len(time_vector_s)
+        assert len(time_vector_jd) == len(time_vector_s)
 
-        SWIPE_spin_all_spin_to_ecliptic(
+        SWIPEspin_all_spin_to_ecliptic(
             result_matrix=result_matrix,
-            sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
             spin_rate_hz=self.spin_rate_hz,
             time_vector_s=time_vector_s,
+            time_vector_jd=time_vector_jd,
         )
 
     @staticmethod
     def from_imo(imo: Imo, url: Union[str, UUID]):
         """Read the definition of the scanning strategy from the IMO
 
-        This function returns a :class:`.SwipeScanningStrategy`
+        This function returns a :class:`.SwipeSpinScanningStrategy`
         object containing the set of parameters that define the
         scanning strategy of the balloon.
 
@@ -211,7 +211,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         Example::
 
             imo = Imo()
-            sstr = SwipeScanningStrategy.from_imo(
+            sstr = SwipeSpinScanningStrategy.from_imo(
                 imo=imo,
                 url="/releases/v0.0/balloon/scanning_parameters/",
             )
@@ -219,7 +219,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
         """
         obj = imo.query(url)
-        return SwipeScanningStrategy(
+        return SwipeSpinScanningStrategy(
             site_latitude_deg=obj.metadata["site_latitude_deg"],
             site_longitude_deg=obj.metadata["site_longitude_deg"],
             longitude_speed_deg_per_sec=obj.metadata["longitude_speed_deg_per_sec"],
@@ -228,10 +228,12 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
     def generate_spin2ecl_quaternions(
         self,
-        start_time: Union[float, astropy.time.Time],
+        start_time: astropy.time.Time,
         time_span_s: float,
         delta_time_s: float,
     ) -> RotQuaternion:
+
+        assert type(start_time) == astropy.time.Time
 
         pointing_freq_hz = 1.0 / delta_time_s
 
@@ -251,10 +253,10 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
             colatitude_rad = np.repeat(self.site_colatitude_rad, num_of_quaternions)
             longitude_rad = np.mod(
-                (self.longitude_speed_rad_per_sec + 2 * np.pi / 24 / 3600) * time_s
-                + self.site_longitude_rad,
+                self.longitude_speed_rad_per_sec * time_s + self.site_longitude_rad,
                 2 * np.pi,
             )
+            time_jd = time.jd
 
         else:
             assert (
@@ -262,8 +264,6 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
                 == len(self.balloon_longitude_rad)
                 == len(self.balloon_time)
             )
-
-            assert type(start_time) == astropy.time.Time
 
             assert self.balloon_time[0] <= start_time
 
@@ -285,15 +285,14 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
             )
             longitude_rad = np.mod(flon(time_jd), 2 * np.pi)
 
-        sun_earth_angles_rad = calculate_sun_earth_angles_rad(time)
 
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,
-            sun_earth_angles_rad=sun_earth_angles_rad,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
             spin_rate_hz=self.spin_rate_hz,
             time_vector_s=time_s,
+            time_vector_jd=time_jd,
         )
 
         return RotQuaternion(
