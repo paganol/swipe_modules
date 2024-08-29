@@ -15,7 +15,6 @@ setup(
         "astropy>=4.0",
         "litebird_sim",
         "setuptools",
-        "mpi4py",
     ],
     include_package_data=True,
 )
