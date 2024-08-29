@@ -36,7 +36,7 @@ def _sawtooth(
         return offset
     else:
         r = time / amplitude * speed
-        x = 4 * np.abs((r - np.floor(r + 0.5))) - 1
+        x = 4 * np.abs((r - np.floor(r + 0.5))) #- 1
         return offset + amplitude * x / 2
 
 
@@ -104,8 +104,11 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
     - `longitude_speed_deg_per_sec`: longitude speed in deg/sec
 
-    - `spin_rate_rmp`: the number of rotations per minute (RPM) around
-    the spin axis
+    - `azimuth_start_deg`: start azimuth for constant elevation scan  
+
+    - `azimuth_amplitude_deg`: amplitude in azimuth for constant elevation scan
+
+    - `azimuth_scan_speed_deg_per_s`: scan speed in azimuth
 
     - `start_time`: an ``astropy.time.Time`` object representing the
       start of the observation. It's currently unused, but it is meant
