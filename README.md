@@ -85,7 +85,7 @@ for idet in [0]:
     h[0:len(pixel_occurrences)] += pixel_occurrences
 hp.mollview(h)
 ```
-<img src="https://user-images.githubusercontent.com/5398538/146160724-a04d6117-e39b-4690-a247-9a7bfdeb6ba5.png" width="500">
+![scan](https://github.com/user-attachments/assets/96039d6b-f60a-4a93-9a93-65e59f064273)
 
 
 ## Parameters
