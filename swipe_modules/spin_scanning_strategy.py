@@ -26,9 +26,8 @@ from .common import _ct_jd_to_lst_rad, EQUATOR_ECLIPTIC_ANGLE_RAD
 
 
 @njit
-def SWIPEspin_spin_to_ecliptic(
+def _SWIPEspin_spin_to_ecliptic(
     result,
-    sun_earth_angle_rad,
     colatitude_rad,
     longitude_rad,
     spin_rate_hz,
@@ -44,16 +43,17 @@ def SWIPEspin_spin_to_ecliptic(
 
 
 @njit
-def SWIPEspin_all_spin_to_ecliptic(
+def _SWIPEspin_all_spin_to_ecliptic(
     result_matrix,
     colatitude_rad,
     longitude_rad,
     spin_rate_hz,
     time_vector_s,
+    time_vector_jd,
 ):
 
     for row in range(result_matrix.shape[0]):
-        SWIPEspin_spin_to_ecliptic(
+        _SWIPEspin_spin_to_ecliptic(
             result=result_matrix[row, :],
             colatitude_rad=colatitude_rad[row],
             longitude_rad=longitude_rad[row],
@@ -181,7 +181,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         assert result_matrix.shape == (len(time_vector_s), 4)
         assert len(time_vector_jd) == len(time_vector_s)
 
-        SWIPEspin_all_spin_to_ecliptic(
+        _SWIPEspin_all_spin_to_ecliptic(
             result_matrix=result_matrix,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
