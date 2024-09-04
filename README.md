@@ -130,8 +130,7 @@ It takes the following parameters:
 
     - `start_time`: an ``astropy.time.Time`` object representing the
       start of the observation. It's currently unused, but it is meant
-      to represent the time when the rotation starts (i.e., the angle
-      ωt is zero).
+      to represent the time when the scan starts.
 
     - `balloon_latitude_deg`: latitude of a tabulated trajectory
 
