@@ -22,7 +22,11 @@ from litebird_sim.quaternions import (
 from litebird_sim.imo import Imo
 from uuid import UUID
 
-from .common import _ct_jd_to_lst_rad, EQUATOR_ECLIPTIC_ANGLE_RAD
+from .common import (
+    _ct_jd_to_lst_rad,
+    _equinox_precession_rad,
+    _equator_ecliptic_angle_rad,
+)
 
 
 @njit
@@ -36,10 +40,15 @@ def _SWIPEspin_spin_to_ecliptic(
 ):
 
     result[:] = quat_rotation_z(2 * np.pi * spin_rate_hz * time_s)
+
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
+
     lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
-    quat_left_multiply(result, *quat_rotation_z(lst))
-    quat_left_multiply(result, *quat_rotation_x(EQUATOR_ECLIPTIC_ANGLE_RAD))
+    eqx = _equinox_precession_rad(time_jd)
+    quat_left_multiply(result, *quat_rotation_z(lst + eqx))
+
+    obl = -_equator_ecliptic_angle_rad(time_jd)
+    quat_left_multiply(result, *quat_rotation_x(obl))
 
 
 @njit
@@ -284,7 +293,6 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
                 balloon_time_jd, np.unwrap(self.balloon_longitude_rad), kind="cubic"
             )
             longitude_rad = np.mod(flon(time_jd), 2 * np.pi)
-
 
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,

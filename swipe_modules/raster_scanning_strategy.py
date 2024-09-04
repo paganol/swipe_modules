@@ -21,7 +21,11 @@ from litebird_sim.quaternions import (
 from litebird_sim.imo import Imo
 from uuid import UUID
 
-from .common import _ct_jd_to_lst_rad, EQUATOR_ECLIPTIC_ANGLE_RAD
+from .common import (
+    _ct_jd_to_lst_rad,
+    _equinox_precession_rad,
+    _equator_ecliptic_angle_rad,
+)
 
 
 @njit
@@ -36,7 +40,7 @@ def _sawtooth(
         return offset
     else:
         r = time / amplitude * speed
-        x = 4 * np.abs((r - np.floor(r + 0.5))) #- 1
+        x = 4 * np.abs((r - np.floor(r + 0.5)))  # - 1
         return offset + amplitude * x / 2
 
 
@@ -61,10 +65,15 @@ def _SWIPEraster_spin_to_ecliptic(
             azimuth_scan_speed_rad_per_s,
         )
     )
+
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
+
     lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
-    quat_left_multiply(result, *quat_rotation_z(lst))
-    quat_left_multiply(result, *quat_rotation_x(EQUATOR_ECLIPTIC_ANGLE_RAD))
+    eqx = _equinox_precession_rad(time_jd)
+    quat_left_multiply(result, *quat_rotation_z(lst + eqx))
+
+    obl = -_equator_ecliptic_angle_rad(time_jd)
+    quat_left_multiply(result, *quat_rotation_x(obl))
 
 
 @njit
@@ -104,7 +113,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
     - `longitude_speed_deg_per_sec`: longitude speed in deg/sec
 
-    - `azimuth_start_deg`: start azimuth for constant elevation scan  
+    - `azimuth_start_deg`: start azimuth for constant elevation scan
 
     - `azimuth_amplitude_deg`: amplitude in azimuth for constant elevation scan
 
@@ -112,8 +121,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
     - `start_time`: an ``astropy.time.Time`` object representing the
       start of the observation. It's currently unused, but it is meant
-      to represent the time when the rotation starts (i.e., the angle
-      ωt is zero).
+      to represent the time when the scan starts
 
     - `balloon_latitude_deg`: latitude of a tabulated trajectory
 
@@ -335,7 +343,6 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
                 balloon_time_jd, np.unwrap(self.balloon_longitude_rad), kind="cubic"
             )
             longitude_rad = np.mod(flon(time_jd), 2 * np.pi)
-
 
         self.all_spin_to_ecliptic(
             result_matrix=spin2ecliptic_quats,
