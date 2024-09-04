@@ -194,7 +194,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
             result_matrix=result_matrix,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
-            spin_rate_hz=self.spin_rate_hz,
+            spin_rate_hz=spin_rate_hz,
             time_vector_s=time_vector_s,
             time_vector_jd=time_vector_jd,
         )
@@ -276,12 +276,12 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
             assert self.balloon_time[0] <= start_time
 
-            end_time = start_time + time_span_s / 24 / 3600
+            end_time = start_time + time_span_s * astropy.units.second
 
             assert self.balloon_time[-1] >= end_time
 
-            time_jd = [d.jd for d in time]
-            balloon_time_jd = [d.jd for d in self.balloon_time]
+            time_jd = time.jd
+            balloon_time_jd = self.balloon_time.jd
 
             # interpolate
             fcolat = interpolate.interp1d(

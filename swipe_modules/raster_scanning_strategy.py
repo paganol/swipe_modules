@@ -142,8 +142,8 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         site_latitude_deg=78.2232,
         site_longitude_deg=15.6267,
         longitude_speed_deg_per_sec=0,
-        azimuth_start_deg=180.0,
-        azimuth_amplitude_deg=20.0,
+        azimuth_start_deg=220.0,
+        azimuth_amplitude_deg=80.0,
         azimuth_scan_speed_deg_per_s=0.1,
         start_time: Union[astropy.time.Time, None] = None,
         balloon_latitude_deg: Union[np.ndarray, None] = None,
@@ -240,9 +240,9 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
             result_matrix=result_matrix,
             colatitude_rad=colatitude_rad,
             longitude_rad=longitude_rad,
-            azimuth_start_rad=self.azimuth_start_rad,
-            azimuth_amplitude_rad=self.azimuth_amplitude_rad,
-            azimuth_scan_speed_rad_per_s=self.azimuth_scan_speed_rad_per_s,
+            azimuth_start_rad=azimuth_start_rad,
+            azimuth_amplitude_rad=azimuth_amplitude_rad,
+            azimuth_scan_speed_rad_per_s=azimuth_scan_speed_rad_per_s,
             time_vector_s=time_vector_s,
             time_vector_jd=time_vector_jd,
         )
@@ -326,7 +326,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
             assert self.balloon_time[0] <= start_time
 
-            end_time = start_time + time_span_s / 24 / 3600
+            end_time = start_time + time_span_s * astropy.units.second
 
             assert self.balloon_time[-1] >= end_time
 
