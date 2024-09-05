@@ -13,9 +13,8 @@ setup(
         "numpy>=1.18",
         "numba>=0.54",
         "astropy>=4.0",
-        "litebird_sim",
+        "litebird_sim>=0.13.0",
         "setuptools",
-        "mpi4py",
     ],
     include_package_data=True,
 )
