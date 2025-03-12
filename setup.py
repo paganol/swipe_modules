@@ -8,7 +8,7 @@ setup(
     author_email="luca.pagano@unife.it",
     zip_safe=False,
     packages=find_packages(),
-    python_requires=">=3.7.1,<3.10",
+    python_requires=">=3.7.1,<3.12",
     install_requires=[
         "numpy>=1.18",
         "numba>=0.54",
