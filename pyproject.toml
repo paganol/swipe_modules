@@ -7,28 +7,16 @@ name = "swipe_modules"
 version = "0.1.0"
 description = "Routines that adapt litebird_sim to LSPE-SWIPE"
 readme = "README.md"
-requires-python = ">=3.10"
 license = {text = "GPL"}
+requires-python = ">=3.10,<3.14"
 authors = [
     {name = "Luca Pagano", email = "luca.pagano@unife.it"}
 ]
 keywords = ["astronomy", "simulation", "scanning"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Natural Language :: English",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Topic :: Scientific/Engineering :: Astronomy",
-]
 dependencies = [
-    "numpy>=1.18",
-    "numba>=0.54",
-    "astropy>=4.0",
+    "numpy>=1.26.4",
+    "numba>=0.61.2",
+    "astropy==6.1.7",
     "litebird_sim>=0.16.0",
 ]
 
