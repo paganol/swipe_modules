@@ -1,43 +1,60 @@
-# -*- encoding: utf-8 -*-
+"""Spin scanning strategy for SWIPE."""
 
+from typing import Final
+from uuid import UUID
+
+import astropy.time
 import numpy as np
-import astropy
-from scipy import interpolate
-from typing import Union, List
 from numba import njit
-from litebird_sim import (
-    ScanningStrategy,
-    calculate_sun_earth_angles_rad,
-    RotQuaternion,
-)
+from scipy import interpolate
 
+from litebird_sim import RotQuaternion, ScanningStrategy, calculate_sun_earth_angles_rad
+from litebird_sim.imo import Imo
 from litebird_sim.quaternions import (
+    quat_left_multiply,
     quat_rotation_x,
     quat_rotation_y,
     quat_rotation_z,
-    quat_left_multiply,
     rotate_x_vector,
     rotate_z_vector,
 )
-from litebird_sim.imo import Imo
-from uuid import UUID
 
 from .common import (
     _ct_jd_to_lst_rad,
-    _equinox_precession_rad,
     _equator_ecliptic_angle_rad,
+    _equinox_precession_rad,
 )
+
+__all__ = ["SwipeSpinScanningStrategy"]
+
+# Spin pattern constants
+_DEFAULT_SITE_LATITUDE_DEG: Final[float] = 78.2232
+_DEFAULT_SITE_LONGITUDE_DEG: Final[float] = 15.6267
+_DEFAULT_SPIN_RATE_RPM: Final[float] = 0.05
+_EQUATORIAL_COLATITUDE_DEG: Final[float] = 90.0
+_DEFAULT_START_TIME: str = "2023-01-01"
+_SECONDS_PER_MINUTE: Final[float] = 60.0
 
 
 @njit
 def _SWIPEspin_spin_to_ecliptic(
-    result,
-    colatitude_rad,
-    longitude_rad,
-    spin_rate_hz,
-    time_s,
-    time_jd,
-):
+    result: np.ndarray,
+    colatitude_rad: float,
+    longitude_rad: float,
+    spin_rate_hz: float,
+    time_s: float,
+    time_jd: float,
+) -> None:
+    """Compute spin-to-ecliptic quaternion for spin scanning.
+    
+    Args:
+        result: Output quaternion array (4-element).
+        colatitude_rad: Colatitude in radians.
+        longitude_rad: Longitude in radians.
+        spin_rate_hz: Spin rate in Hz.
+        time_s: Time in seconds.
+        time_jd: Time in Julian Days.
+    """
 
     result[:] = quat_rotation_z(2 * np.pi * spin_rate_hz * time_s)
 
@@ -53,13 +70,23 @@ def _SWIPEspin_spin_to_ecliptic(
 
 @njit
 def _SWIPEspin_all_spin_to_ecliptic(
-    result_matrix,
-    colatitude_rad,
-    longitude_rad,
-    spin_rate_hz,
-    time_vector_s,
-    time_vector_jd,
-):
+    result_matrix: np.ndarray,
+    colatitude_rad: np.ndarray,
+    longitude_rad: np.ndarray,
+    spin_rate_hz: float,
+    time_vector_s: np.ndarray,
+    time_vector_jd: np.ndarray,
+) -> None:
+    """Compute spin-to-ecliptic quaternions for all times in spin scanning.
+    
+    Args:
+        result_matrix: Output quaternion matrix (N x 4).
+        colatitude_rad: Colatitude values in radians.
+        longitude_rad: Longitude values in radians.
+        spin_rate_hz: Spin rate in Hz.
+        time_vector_s: Time vector in seconds.
+        time_vector_jd: Time vector in Julian Days.
+    """
 
     for row in range(result_matrix.shape[0]):
         _SWIPEspin_spin_to_ecliptic(
@@ -73,62 +100,58 @@ def _SWIPEspin_all_spin_to_ecliptic(
 
 
 class SwipeSpinScanningStrategy(ScanningStrategy):
-    """A class containing the parameters of the sky scanning strategy
-    for SWIPE
-
-    The constructor accepts the following parameters:
-
-    - `site_latitude_deg`: latitude of the launching site in deg
-
-    - `site_longitude_deg`: longitude of the launching site in deg
-
-    - `longitude_speed_deg_per_sec`: longitude speed in deg/sec
-
-    - `spin_rate_rmp`: the number of rotations per minute (RPM) around
-    the spin axis
-
-    - `start_time`: an ``astropy.time.Time`` object representing the
-      start of the observation. It's currently unused, but it is meant
-      to represent the time when the rotation starts (i.e., the angle
-      ωt is zero).
-
-    - `balloon_latitude_deg`: latitude of a tabulated trajectory
-
-    - `balloon_longitude_deg`: longitude of a tabulated trajectory
-
-    - `balloon_time`: list of astropy.time.Time
-
-    These fields are available once the object has been initialized.
-
-    You can create an instance of this class using the class method
-    :meth:`.from_imo`, which reads the
-    parameters from the IMO.
-
+    """Sky scanning strategy for SWIPE with spin scanning pattern.
+    
+    This class defines the scanning parameters for the SWIPE balloon-borne
+    instrument with spinning motion, supporting both fixed sites and balloon
+    trajectories.
+    
+    Attributes:
+        site_colatitude_rad (float): Colatitude of the site in radians.
+        site_longitude_rad (float): Longitude of the site in radians.
+        longitude_speed_rad_per_sec (float): Longitude drift speed in rad/s.
+        spin_rate_hz (float): Spin rate around the spin axis in Hz.
+        start_time (astropy.time.Time): Start time of observation.
+        balloon_colatitude_rad (ndarray | None): Balloon colatitude trajectory.
+        balloon_longitude_rad (ndarray | None): Balloon longitude trajectory.
+        balloon_time (list[astropy.time.Time] | None): Balloon time points.
+        
+    Example:
+        Use :meth:`.from_imo` to create an instance from IMO parameters:
+        
+        >>> imo = Imo()\n        >>> sstr = SwipeSpinScanningStrategy.from_imo(
+        ...     imo=imo,
+        ...     url=\"/releases/v0.0/balloon/scanning_parameters/\",
+        ... )
     """
 
     def __init__(
         self,
-        site_latitude_deg=78.2232,
-        site_longitude_deg=15.6267,
-        longitude_speed_deg_per_sec=0,
-        spin_rate_rmp=0.05,
-        start_time=astropy.time.Time("2023-01-01", scale="tdb"),
-        balloon_latitude_deg: Union[np.ndarray, None] = None,
-        balloon_longitude_deg: Union[np.ndarray, None] = None,
-        balloon_time: Union[List[astropy.time.Time], None] = None,
-    ):
+        site_latitude_deg: float = _DEFAULT_SITE_LATITUDE_DEG,
+        site_longitude_deg: float = _DEFAULT_SITE_LONGITUDE_DEG,
+        longitude_speed_deg_per_sec: float = 0.0,
+        spin_rate_rmp: float = _DEFAULT_SPIN_RATE_RPM,
+        start_time: astropy.time.Time | None = None,
+        balloon_latitude_deg: np.ndarray | None = None,
+        balloon_longitude_deg: np.ndarray | None = None,
+        balloon_time: list[astropy.time.Time] | None = None,
+    ) -> None:
 
-        self.site_colatitude_rad = np.deg2rad(90.0 - site_latitude_deg)
+        self.site_colatitude_rad = np.deg2rad(_EQUATORIAL_COLATITUDE_DEG - site_latitude_deg)
         self.site_longitude_rad = np.deg2rad(site_longitude_deg)
         self.longitude_speed_rad_per_sec = np.deg2rad(longitude_speed_deg_per_sec)
 
-        self.spin_rate_hz = spin_rate_rmp / 60.0
-        self.start_time = start_time
+        self.spin_rate_hz = spin_rate_rmp / _SECONDS_PER_MINUTE
+        self.start_time = (
+            start_time 
+            if start_time is not None 
+            else astropy.time.Time(_DEFAULT_START_TIME, scale="tdb")
+        )
 
         if balloon_latitude_deg is None:
             self.balloon_colatitude_rad = None
         else:
-            self.balloon_colatitude_rad = np.deg2rad(90.0 - balloon_latitude_deg)
+            self.balloon_colatitude_rad = np.deg2rad(_EQUATORIAL_COLATITUDE_DEG - balloon_latitude_deg)
 
         if balloon_longitude_deg is None:
             self.balloon_longitude_rad = None
@@ -147,48 +170,48 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
         self.balloon_time = balloon_time
 
-    def __repr__(self):
-        return (
-            (
-                "SwipeSpinScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
-                "site_longitude_rad={site_longitude_rad},"
-                "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
-                "spin_rate_hz={spin_rate_hz}, "
-                "start_time={start_time})".format(
-                    site_colatitude_rad=self.site_colatitude_rad,
-                    site_longitude_rad=self.site_longitude_rad,
-                    longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
-                    spin_rate_hz=self.spin_rate_hz,
-                    start_time=self.start_time,
-                )
+    def __repr__(self) -> str:
+        """Return string representation of the scanning strategy."""
+        if (self.balloon_colatitude_rad is None) and (self.balloon_longitude_rad is None):
+            return (
+                f"SwipeSpinScanningStrategy("
+                f"site_colatitude_rad={self.site_colatitude_rad}, "
+                f"site_longitude_rad={self.site_longitude_rad}, "
+                f"longitude_speed_rad_per_sec={self.longitude_speed_rad_per_sec}, "
+                f"spin_rate_hz={self.spin_rate_hz}, "
+                f"start_time={self.start_time})"
             )
-            if (
-                (self.balloon_colatitude_rad is None)
-                and (self.balloon_longitude_rad is None)
+        else:
+            return (
+                f"SwipeSpinScanningStrategy("
+                f"colatitude_range_rad=["
+                f"{self.balloon_colatitude_rad.min()}, "
+                f"{self.balloon_colatitude_rad.max()}], "
+                f"spin_rate_hz={self.spin_rate_hz}, "
+                f"start_time={self.start_time})"
             )
-            else (
-                "SwipeSpinScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
-                "spin_rate_hz={spin_rate_hz}, "
-                "start_time={start_time})".format(
-                    min_colatitude_rad=self.balloon_colatitude_rad.min(),
-                    max_colatitude_rad=self.balloon_colatitude_rad.max(),
-                    spin_rate_hz=self.spin_rate_hz,
-                    start_time=self.start_time,
-                )
-            )
-        )
 
     def all_spin_to_ecliptic(
         self,
-        result_matrix,
-        colatitude_rad,
-        longitude_rad,
-        spin_rate_hz,
-        time_vector_s,
-        time_vector_jd,
-    ):
-        assert result_matrix.shape == (len(time_vector_s), 4)
-        assert len(time_vector_jd) == len(time_vector_s)
+        result_matrix: np.ndarray,
+        colatitude_rad: np.ndarray,
+        longitude_rad: np.ndarray,
+        spin_rate_hz: float,
+        time_vector_s: np.ndarray,
+        time_vector_jd: np.ndarray,
+    ) -> None:
+        """Compute spin-to-ecliptic quaternions for array of times.
+        
+        Args:
+            result_matrix: Output quaternion matrix (N x 4).
+            colatitude_rad: Colatitude values in radians.
+            longitude_rad: Longitude values in radians.
+            spin_rate_hz: Spin rate in Hz.
+            time_vector_s: Time vector in seconds.
+            time_vector_jd: Time vector in Julian Days.
+        """
+        assert result_matrix.shape == (len(time_vector_s), 4), "Result matrix size mismatch"
+        assert len(time_vector_jd) == len(time_vector_s), "Time vector size mismatch"
 
         _SWIPEspin_all_spin_to_ecliptic(
             result_matrix=result_matrix,
@@ -200,32 +223,24 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         )
 
     @staticmethod
-    def from_imo(imo: Imo, url: Union[str, UUID]):
-        """Read the definition of the scanning strategy from the IMO
-
-        This function returns a :class:`.SwipeSpinScanningStrategy`
-        object containing the set of parameters that define the
-        scanning strategy of the balloon.
-
+    def from_imo(imo: Imo, url: str | UUID) -> "SwipeSpinScanningStrategy":
+        """Read scanning strategy parameters from the IMO database.
+        
         Args:
-
-            imo (:class:`.Imo`): an instance of the :class:`.Imo` class
-
-            url (str or ``UUID``): a reference to the data file
-                containing the definition of the scanning strategy. It can
-                be either a string like
-                ``/releases/v0.0/balloon/scanning_parameters/`` or a
-                UUID.
-
-        Example::
-
-            imo = Imo()
-            sstr = SwipeSpinScanningStrategy.from_imo(
-                imo=imo,
-                url="/releases/v0.0/balloon/scanning_parameters/",
-            )
-            print(sstr)
-
+            imo: An IMO database instance.
+            url: IMO reference path or UUID for the scanning parameters.
+                Example: \"/releases/v0.0/balloon/scanning_parameters/\"
+                
+        Returns:
+            SwipeSpinScanningStrategy instance with IMO parameters.
+            
+        Example:
+            >>> imo = Imo()
+            >>> sstr = SwipeSpinScanningStrategy.from_imo(
+            ...     imo=imo,
+            ...     url=\"/releases/v0.0/balloon/scanning_parameters/\",
+            ... )
+            >>> print(sstr)
         """
         obj = imo.query(url)
         return SwipeSpinScanningStrategy(
@@ -241,8 +256,17 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         time_span_s: float,
         delta_time_s: float,
     ) -> RotQuaternion:
-
-        assert type(start_time) == astropy.time.Time
+        """Generate spin-to-ecliptic quaternions for a time span.
+        
+        Args:
+            start_time: Start time of quaternion generation.
+            time_span_s: Duration to cover in seconds.
+            delta_time_s: Sampling interval in seconds.
+            
+        Returns:
+            RotQuaternion: Quaternion time series.
+        """
+        assert isinstance(start_time, astropy.time.Time), "start_time must be astropy.time.Time"
 
         pointing_freq_hz = 1.0 / delta_time_s
 
