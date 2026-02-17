@@ -1,6 +1,6 @@
 """Common utility functions for SWIPE scanning strategies."""
 
-import pkg_resources
+from importlib.resources import files
 from typing import Final
 
 import numpy as np
@@ -10,7 +10,7 @@ __all__ = [
     "data_directory",
 ]
 
-data_directory: Final[str] = pkg_resources.resource_filename("swipe_modules", "data")
+data_directory: Final[str] = str(files("swipe_modules") / "data")
 
 # Constants for astronomical calculations
 _J2000_JD: Final[float] = 2451545.0
