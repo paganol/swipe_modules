@@ -4,7 +4,7 @@ from .common import data_directory
 from .raster_scanning_strategy import SwipeRasterScanningStrategy
 from .spin_scanning_strategy import SwipeSpinScanningStrategy
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __author__ = "Luca Pagano"
 __author_email__ = "luca.pagano@unife.it"
 
