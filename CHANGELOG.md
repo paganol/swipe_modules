@@ -1,6 +1,13 @@
 # HEAD
 
 - Add `.gitignore` for build/dist artifacts, notebook checkpoints, and editor/OS files [#9]
+- Fix the README's Usage snippet, which called `np.deg2rad(...)` without importing numpy
+  (`NameError` if copy-pasted as-is), and bump its `conda create ... python=3.8` example,
+  which predated `pyproject.toml`'s `requires-python = ">=3.10,<3.14"` [#10]
+- Add `examples/test_swipe_raster_fort_sumner.ipynb`: a `SwipeRasterScanningStrategy`
+  example from Fort Sumner, NM (the NASA long-duration balloon launch site) that generates
+  an input sky (CMB + foregrounds), observes it, bins it back into a map, and overlays the
+  Sun, Moon, outer planets, the Galactic plane, and the Crab Nebula on the scan coverage [#11]
 
 # Version 0.2.1 (2026-08-27)
 
