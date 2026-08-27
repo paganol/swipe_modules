@@ -5,19 +5,16 @@ from uuid import UUID
 
 import astropy.time
 import numpy as np
-from numba import njit
-from scipy import interpolate
-
-from litebird_sim import RotQuaternion, ScanningStrategy, calculate_sun_earth_angles_rad
+from litebird_sim import RotQuaternion, ScanningStrategy
 from litebird_sim.imo import Imo
 from litebird_sim.quaternions import (
     quat_left_multiply,
     quat_rotation_x,
     quat_rotation_y,
     quat_rotation_z,
-    rotate_x_vector,
-    rotate_z_vector,
 )
+from numba import njit
+from scipy import interpolate
 
 from .common import (
     _ct_jd_to_lst_rad,
@@ -46,7 +43,7 @@ def _SWIPEspin_spin_to_ecliptic(
     time_jd: float,
 ) -> None:
     """Compute spin-to-ecliptic quaternion for spin scanning.
-    
+
     Args:
         result: Output quaternion array (4-element).
         colatitude_rad: Colatitude in radians.
@@ -78,7 +75,7 @@ def _SWIPEspin_all_spin_to_ecliptic(
     time_vector_jd: np.ndarray,
 ) -> None:
     """Compute spin-to-ecliptic quaternions for all times in spin scanning.
-    
+
     Args:
         result_matrix: Output quaternion matrix (N x 4).
         colatitude_rad: Colatitude values in radians.
@@ -101,11 +98,11 @@ def _SWIPEspin_all_spin_to_ecliptic(
 
 class SwipeSpinScanningStrategy(ScanningStrategy):
     """Sky scanning strategy for SWIPE with spin scanning pattern.
-    
+
     This class defines the scanning parameters for the SWIPE balloon-borne
     instrument with spinning motion, supporting both fixed sites and balloon
     trajectories.
-    
+
     Attributes:
         site_colatitude_rad (float): Colatitude of the site in radians.
         site_longitude_rad (float): Longitude of the site in radians.
@@ -115,10 +112,10 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         balloon_colatitude_rad (ndarray | None): Balloon colatitude trajectory.
         balloon_longitude_rad (ndarray | None): Balloon longitude trajectory.
         balloon_time (list[astropy.time.Time] | None): Balloon time points.
-        
+
     Example:
         Use :meth:`.from_imo` to create an instance from IMO parameters:
-        
+
         >>> imo = Imo()\n        >>> sstr = SwipeSpinScanningStrategy.from_imo(
         ...     imo=imo,
         ...     url=\"/releases/v0.0/balloon/scanning_parameters/\",
@@ -143,15 +140,17 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
 
         self.spin_rate_hz = spin_rate_rmp / _SECONDS_PER_MINUTE
         self.start_time = (
-            start_time 
-            if start_time is not None 
+            start_time
+            if start_time is not None
             else astropy.time.Time(_DEFAULT_START_TIME, scale="tdb")
         )
 
         if balloon_latitude_deg is None:
             self.balloon_colatitude_rad = None
         else:
-            self.balloon_colatitude_rad = np.deg2rad(_EQUATORIAL_COLATITUDE_DEG - balloon_latitude_deg)
+            self.balloon_colatitude_rad = np.deg2rad(
+                _EQUATORIAL_COLATITUDE_DEG - balloon_latitude_deg
+            )
 
         if balloon_longitude_deg is None:
             self.balloon_longitude_rad = None
@@ -201,7 +200,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         time_vector_jd: np.ndarray,
     ) -> None:
         """Compute spin-to-ecliptic quaternions for array of times.
-        
+
         Args:
             result_matrix: Output quaternion matrix (N x 4).
             colatitude_rad: Colatitude values in radians.
@@ -225,15 +224,15 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
     @staticmethod
     def from_imo(imo: Imo, url: str | UUID) -> "SwipeSpinScanningStrategy":
         """Read scanning strategy parameters from the IMO database.
-        
+
         Args:
             imo: An IMO database instance.
             url: IMO reference path or UUID for the scanning parameters.
                 Example: \"/releases/v0.0/balloon/scanning_parameters/\"
-                
+
         Returns:
             SwipeSpinScanningStrategy instance with IMO parameters.
-            
+
         Example:
             >>> imo = Imo()
             >>> sstr = SwipeSpinScanningStrategy.from_imo(
@@ -257,12 +256,12 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
         delta_time_s: float,
     ) -> RotQuaternion:
         """Generate spin-to-ecliptic quaternions for a time span.
-        
+
         Args:
             start_time: Start time of quaternion generation.
             time_span_s: Duration to cover in seconds.
             delta_time_s: Sampling interval in seconds.
-            
+
         Returns:
             RotQuaternion: Quaternion time series.
         """

@@ -5,9 +5,6 @@ from uuid import UUID
 
 import astropy.time
 import numpy as np
-from numba import njit
-from scipy import interpolate
-
 from litebird_sim import RotQuaternion, ScanningStrategy
 from litebird_sim.imo import Imo
 from litebird_sim.quaternions import (
@@ -15,9 +12,9 @@ from litebird_sim.quaternions import (
     quat_rotation_x,
     quat_rotation_y,
     quat_rotation_z,
-    rotate_x_vector,
-    rotate_z_vector,
 )
+from numba import njit
+from scipy import interpolate
 
 from .common import (
     _ct_jd_to_lst_rad,
@@ -44,13 +41,13 @@ def _sawtooth(
     speed: float,
 ) -> float:
     """Generate a sawtooth waveform.
-    
+
     Args:
         time: Time value.
         offset: Offset of the sawtooth.
         amplitude: Amplitude of the sawtooth.
         speed: Speed parameter.
-        
+
     Returns:
         Sawtooth waveform value.
     """
@@ -59,7 +56,7 @@ def _sawtooth(
         return offset
     else:
         r = time / amplitude * speed
-        x = 4 * np.abs((r - np.floor(r + 0.5)))  # - 1
+        x = 4 * np.abs(r - np.floor(r + 0.5))  # - 1
         return offset + amplitude * x / 2
 
 
@@ -75,7 +72,7 @@ def _SWIPEraster_spin_to_ecliptic(
     time_jd: float,
 ) -> None:
     """Compute spin-to-ecliptic quaternion for raster scanning.
-    
+
     Args:
         result: Output quaternion array (4-element).
         colatitude_rad: Latitude in radians.
@@ -119,7 +116,7 @@ def _SWIPEraster_all_spin_to_ecliptic(
     time_vector_jd: np.ndarray,
 ) -> None:
     """Compute spin-to-ecliptic quaternions for all times in raster scanning.
-    
+
     Args:
         result_matrix: Output quaternion matrix (N x 4).
         colatitude_rad: Colatitude values in radians.
@@ -146,10 +143,10 @@ def _SWIPEraster_all_spin_to_ecliptic(
 
 class SwipeRasterScanningStrategy(ScanningStrategy):
     """Sky scanning strategy for SWIPE with raster scanning pattern.
-    
+
     This class defines the scanning parameters for the SWIPE balloon-borne
     instrument, supporting both fixed sites and balloon trajectories.
-    
+
     Attributes:
         site_colatitude_rad (float): Colatitude of the site in radians.
         site_longitude_rad (float): Longitude of the site in radians.
@@ -161,10 +158,10 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         balloon_colatitude_rad (ndarray | None): Balloon colatitude trajectory.
         balloon_longitude_rad (ndarray | None): Balloon longitude trajectory.
         balloon_time (list[astropy.time.Time] | None): Balloon time points.
-        
+
     Example:
         Use :meth:`.from_imo` to create an instance from IMO parameters:
-        
+
         >>> imo = Imo()
         >>> sstr = SwipeRasterScanningStrategy.from_imo(
         ...     imo=imo,
@@ -199,7 +196,9 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         if balloon_latitude_deg is None:
             self.balloon_colatitude_rad = None
         else:
-            self.balloon_colatitude_rad = np.deg2rad(_EQUATORIAL_COLATITUDE_DEG - balloon_latitude_deg)
+            self.balloon_colatitude_rad = np.deg2rad(
+                _EQUATORIAL_COLATITUDE_DEG - balloon_latitude_deg
+            )
 
         if balloon_longitude_deg is None:
             self.balloon_longitude_rad = None
@@ -221,39 +220,24 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
     def __repr__(self):
         return (
             (
-                "SwipeRasterScanningStrategy(site_colatitude_rad={site_colatitude_rad}, "
-                "site_longitude_rad={site_longitude_rad},"
-                "longitude_speed_rad_per_sec={longitude_speed_rad_per_sec}, "
-                "azimuth_start_rad={azimuth_start_rad}, "
-                "azimuth_amplitude_rad={azimuth_amplitude_rad}, "
-                "azimuth_scan_speed_rad_per_s={azimuth_scan_speed_rad_per_s}, "
-                "start_time={start_time})".format(
-                    site_colatitude_rad=self.site_colatitude_rad,
-                    site_longitude_rad=self.site_longitude_rad,
-                    longitude_speed_rad_per_sec=self.longitude_speed_rad_per_sec,
-                    azimuth_start_rad=self.azimuth_start_rad,
-                    azimuth_amplitude_rad=self.azimuth_amplitude_rad,
-                    azimuth_scan_speed_rad_per_s=self.azimuth_scan_speed_rad_per_s,
-                    start_time=self.start_time,
-                )
+                f"SwipeRasterScanningStrategy(site_colatitude_rad={self.site_colatitude_rad}, "
+                f"site_longitude_rad={self.site_longitude_rad},"
+                f"longitude_speed_rad_per_sec={self.longitude_speed_rad_per_sec}, "
+                f"azimuth_start_rad={self.azimuth_start_rad}, "
+                f"azimuth_amplitude_rad={self.azimuth_amplitude_rad}, "
+                f"azimuth_scan_speed_rad_per_s={self.azimuth_scan_speed_rad_per_s}, "
+                f"start_time={self.start_time})"
             )
             if (
                 (self.balloon_colatitude_rad is None)
                 and (self.balloon_longitude_rad is None)
             )
             else (
-                "SwipeRasterScanningStrategy(colatitude_range_rad=[{min_colatitude_rad},{max_colatitude_rad}],"
-                "azimuth_start_rad={azimuth_start_rad}, "
-                "azimuth_amplitude_rad={azimuth_amplitude_rad}, "
-                "azimuth_scan_speed_rad_per_s={azimuth_scan_speed_rad_per_s}, "
-                "start_time={start_time})".format(
-                    min_colatitude_rad=self.balloon_colatitude_rad.min(),
-                    max_colatitude_rad=self.balloon_colatitude_rad.max(),
-                    azimuth_start_rad=self.azimuth_start_rad,
-                    azimuth_amplitude_rad=self.azimuth_amplitude_rad,
-                    azimuth_scan_speed_rad_per_s=self.azimuth_scan_speed_rad_per_s,
-                    start_time=self.start_time,
-                )
+                f"SwipeRasterScanningStrategy(colatitude_range_rad=[{self.balloon_colatitude_rad.min()},{self.balloon_colatitude_rad.max()}],"
+                f"azimuth_start_rad={self.azimuth_start_rad}, "
+                f"azimuth_amplitude_rad={self.azimuth_amplitude_rad}, "
+                f"azimuth_scan_speed_rad_per_s={self.azimuth_scan_speed_rad_per_s}, "
+                f"start_time={self.start_time})"
             )
         )
 
@@ -269,7 +253,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         time_vector_jd: np.ndarray,
     ) -> None:
         """Compute spin-to-ecliptic quaternions for array of times.
-        
+
         Args:
             result_matrix: Output quaternion matrix (N x 4).
             colatitude_rad: Colatitude values in radians.
@@ -297,15 +281,15 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
     @staticmethod
     def from_imo(imo: Imo, url: str | UUID) -> "SwipeRasterScanningStrategy":
         """Read scanning strategy parameters from the IMO database.
-        
+
         Args:
             imo: An IMO database instance.
             url: IMO reference path or UUID for the scanning parameters.
                 Example: "/releases/v0.0/balloon/scanning_parameters/"
-                
+
         Returns:
             SwipeRasterScanningStrategy instance with IMO parameters.
-            
+
         Example:
             >>> imo = Imo()
             >>> sstr = SwipeRasterScanningStrategy.from_imo(
@@ -331,12 +315,12 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
         delta_time_s: float,
     ) -> RotQuaternion:
         """Generate spin-to-ecliptic quaternions for a time span.
-        
+
         Args:
             start_time: Start time of quaternion generation.
             time_span_s: Duration to cover in seconds.
             delta_time_s: Sampling interval in seconds.
-            
+
         Returns:
             RotQuaternion: Quaternion time series.
         """
