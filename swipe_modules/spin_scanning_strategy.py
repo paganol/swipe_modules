@@ -4,6 +4,7 @@ from typing import Final
 from uuid import UUID
 
 import astropy.time
+import astropy.units
 import numpy as np
 from litebird_sim import RotQuaternion, ScanningStrategy
 from litebird_sim.imo import Imo
@@ -19,7 +20,6 @@ from scipy import interpolate
 from .common import (
     _ct_jd_to_lst_rad,
     _equator_ecliptic_angle_rad,
-    _equinox_precession_rad,
 )
 
 __all__ = ["SwipeSpinScanningStrategy"]
@@ -58,8 +58,7 @@ def _SWIPEspin_spin_to_ecliptic(
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
 
     lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
-    eqx = _equinox_precession_rad(time_jd)
-    quat_left_multiply(result, *quat_rotation_z(lst + eqx))
+    quat_left_multiply(result, *quat_rotation_z(lst))
 
     obl = -_equator_ecliptic_angle_rad(time_jd)
     quat_left_multiply(result, *quat_rotation_x(obl))
@@ -304,7 +303,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
             assert self.balloon_time[-1] >= end_time
 
             time_jd = time.jd
-            balloon_time_jd = self.balloon_time.jd
+            balloon_time_jd = astropy.time.Time(self.balloon_time).jd
 
             # interpolate
             fcolat = interpolate.interp1d(
