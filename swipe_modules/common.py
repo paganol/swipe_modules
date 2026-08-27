@@ -23,13 +23,13 @@ def _ct_jd_to_lst_rad(
     longitude_rad: float,
 ) -> float:
     """Compute the local sidereal time as a function of Julian Day.
-    
+
     Adapted from the astrolib routine ct2lst.pro.
-    
+
     Args:
         time_jd: Time in Julian Days.
         longitude_rad: Longitude in radians.
-        
+
     Returns:
         Local sidereal time in radians.
     """
@@ -50,16 +50,16 @@ def _ct_jd_to_lst_rad(
 @njit
 def _equinox_precession_rad(time_jd: float) -> float:
     """Compute the precession of the equinox with respect to J2000.
-    
+
     Very rough estimation but sufficient for the SWIPE beam (~2 arcmin error).
-    
+
     References:
         - https://en.wikipedia.org/wiki/Axial_precession#Values
         - https://syrte.obspm.fr/iau2006/aa03_412_P03.pdf
-        
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         Precession angle in radians.
     """
@@ -71,16 +71,16 @@ def _equinox_precession_rad(time_jd: float) -> float:
 @njit
 def _equator_ecliptic_angle_rad(time_jd: float) -> float:
     """Compute the obliquity of the ecliptic with respect to J2000.
-    
+
     Third-order polynomial approximation.
-    
+
     References:
         - https://en.wikipedia.org/wiki/Ecliptic#Obliquity_of_the_ecliptic
         - https://syrte.obspm.fr/iau2006/aa03_412_P03.pdf
-        
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         Obliquity angle in radians.
     """
@@ -98,10 +98,10 @@ def _equator_ecliptic_angle_rad(time_jd: float) -> float:
 @njit
 def _chiA_rad(time_jd: float) -> float:
     """Compute chi_A precession component in radians.
-    
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         chi_A angle in radians.
     """
@@ -117,10 +117,10 @@ def _chiA_rad(time_jd: float) -> float:
 @njit
 def _zitaA_rad(time_jd: float) -> float:
     """Compute zeta_A precession component in radians.
-    
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         zeta_A angle in radians.
     """
@@ -138,10 +138,10 @@ def _zitaA_rad(time_jd: float) -> float:
 @njit
 def _zetaA_rad(time_jd: float) -> float:
     """Compute zeta_A precession component in radians.
-    
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         zeta_A angle in radians.
     """
@@ -159,10 +159,10 @@ def _zetaA_rad(time_jd: float) -> float:
 @njit
 def _thetaA_rad(time_jd: float) -> float:
     """Compute theta_A precession component in radians.
-    
+
     Args:
         time_jd: Time in Julian Days.
-        
+
     Returns:
         theta_A angle in radians.
     """
