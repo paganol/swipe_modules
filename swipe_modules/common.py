@@ -48,27 +48,6 @@ def _ct_jd_to_lst_rad(
 
 
 @njit
-def _equinox_precession_rad(time_jd: float) -> float:
-    """Compute the precession of the equinox with respect to J2000.
-
-    Very rough estimation but sufficient for the SWIPE beam (~2 arcmin error).
-
-    References:
-        - https://en.wikipedia.org/wiki/Axial_precession#Values
-        - https://syrte.obspm.fr/iau2006/aa03_412_P03.pdf
-
-    Args:
-        time_jd: Time in Julian Days.
-
-    Returns:
-        Precession angle in radians.
-    """
-    t = (time_jd - _J2000_JD) / _SECONDS_PER_CENTURY
-
-    return -(0.02438029195 * t + 5.3592991461e-6 * t * t + 5.5608129223e-9 * t * t * t)
-
-
-@njit
 def _equator_ecliptic_angle_rad(time_jd: float) -> float:
     """Compute the obliquity of the ecliptic with respect to J2000.
 

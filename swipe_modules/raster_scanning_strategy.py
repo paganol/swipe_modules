@@ -20,7 +20,6 @@ from scipy import interpolate
 from .common import (
     _ct_jd_to_lst_rad,
     _equator_ecliptic_angle_rad,
-    _equinox_precession_rad,
 )
 
 __all__ = ["SwipeRasterScanningStrategy"]
@@ -98,8 +97,7 @@ def _SWIPEraster_spin_to_ecliptic(
     quat_left_multiply(result, *quat_rotation_y(colatitude_rad))
 
     lst = _ct_jd_to_lst_rad(time_jd, longitude_rad)
-    eqx = _equinox_precession_rad(time_jd)
-    quat_left_multiply(result, *quat_rotation_z(lst + eqx))
+    quat_left_multiply(result, *quat_rotation_z(lst))
 
     obl = -_equator_ecliptic_angle_rad(time_jd)
     quat_left_multiply(result, *quat_rotation_x(obl))
