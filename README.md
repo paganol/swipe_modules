@@ -12,7 +12,7 @@ It sould contain:
 Set up the enviroment (if necessary)
 ```
 # Create a conda environment
-conda create -n swipe_env python=3.8
+conda create -n swipe_env python=3.12
 
 # Activate the environment
 conda activate swipe_env
@@ -44,6 +44,7 @@ from swipe_modules import SwipeSpinScanningStrategy
 import litebird_sim as lbs
 import healpy as hp
 import astropy
+import numpy as np
 
 # Initialize the simulation
 sim = lbs.Simulation(
