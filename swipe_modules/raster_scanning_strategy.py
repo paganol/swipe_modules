@@ -4,6 +4,7 @@ from typing import Final
 from uuid import UUID
 
 import astropy.time
+import astropy.units
 import numpy as np
 from litebird_sim import RotQuaternion, ScanningStrategy
 from litebird_sim.imo import Imo
@@ -217,7 +218,7 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
         self.balloon_time = balloon_time
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return (
             (
                 f"SwipeRasterScanningStrategy(site_colatitude_rad={self.site_colatitude_rad}, "
@@ -363,8 +364,8 @@ class SwipeRasterScanningStrategy(ScanningStrategy):
 
             assert self.balloon_time[-1] >= end_time
 
-            time_jd = [d.jd for d in time]
-            balloon_time_jd = [d.jd for d in self.balloon_time]
+            time_jd = time.jd
+            balloon_time_jd = astropy.time.Time(self.balloon_time).jd
 
             # interpolate
             fcolat = interpolate.interp1d(

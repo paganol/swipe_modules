@@ -4,6 +4,7 @@ from typing import Final
 from uuid import UUID
 
 import astropy.time
+import astropy.units
 import numpy as np
 from litebird_sim import RotQuaternion, ScanningStrategy
 from litebird_sim.imo import Imo
@@ -304,7 +305,7 @@ class SwipeSpinScanningStrategy(ScanningStrategy):
             assert self.balloon_time[-1] >= end_time
 
             time_jd = time.jd
-            balloon_time_jd = self.balloon_time.jd
+            balloon_time_jd = astropy.time.Time(self.balloon_time).jd
 
             # interpolate
             fcolat = interpolate.interp1d(
